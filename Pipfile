@@ -13,6 +13,8 @@ pylint = "*"
 [packages]
 
 apistar = "*"
+gunicorn = "*"
+meinheld = "*"
 
 
 [requires]
