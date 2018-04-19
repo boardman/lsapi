@@ -11,7 +11,7 @@ from apistar import Settings
 class Env(environment.Environment):
     properties = {
         'DEBUG': typesystem.boolean(default=False),
-        'UDP_IP': typesystem.string(default='91.84.242.209'),
+        'UDP_IP': typesystem.string(default='172.17.10.20'),
         'UDP_PORT': typesystem.integer(default=10001)
     }
 
