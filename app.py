@@ -1,60 +1,47 @@
 import socket
 import sys
+import os
 
-from apistar import Include, Route
-from apistar.frameworks.wsgi import WSGIApp as App
-from apistar.handlers import docs_urls, static_urls
-from apistar import environment, typesystem
-from apistar import Settings
+from apistar import App, Include, Route, types, validators, http, server
 
+class Env(types.Type):
+    debug = validators.Boolean(default=True),
+    udp_ip = validators.String(default=os.environ['UDP_IP'] if os.environ['UDP_IP'] else '172.17.10.20')
+    udp_port = validators.Number(default=int(os.environ['UDP_PORT']) if os.environ['UDP_PORT'] else 10001)
 
-class Env(environment.Environment):
-    properties = {
-        'DEBUG': typesystem.boolean(default=False),
-        'UDP_IP': typesystem.string(default='172.17.10.20'),
-        'UDP_PORT': typesystem.integer(default=10001)
-    }
 
 env = Env()
+print(env)
 
-class IsOn(typesystem.Boolean):
-    default = False
-    description = 'Should the lighting be on'
+class LightState(types.Type):
+    is_on = validators.Boolean(default=False, description="Should the lights be on")
 
-
-def send_message(message, settings: Settings):
+def send_message(message):
     try:
         print('Sending message: {}'.format(message))
-        print('ip: {} port: {}'.format(settings['UDP_IP'], settings['UDP_PORT']))
+        print('ip: {} port: {}'.format(env.udp_ip, env.udp_port))
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(message.encode('utf-8'), (settings['UDP_IP'], settings['UDP_PORT']))
+        sock.sendto(message.encode('utf-8'), (env.udp_ip, env.udp_port))
     finally:
         print('Closing socket...')
         sock.close()
 
-
-def all_zones(on: IsOn, settings: Settings):
-    if on:
-        send_message('all_on\r\n', settings)
+def all_zones(lightState: LightState):
+    if lightState.is_on:
+        send_message('all_on\r\n')
+        print(env.keys())
+        print(os.environ.keys())
         return {'all_zones': 'on'}
     else:
-        send_message('all_off\r\n', settings)
+        send_message('all_off\r\n')
         return {'all_zones': 'off'}
 
-
 routes = [
-    Route('/all_zones', 'GET', all_zones),
-    Include('/docs', docs_urls),
-    Include('/static', static_urls)
+    Route('/all_zones', 'POST', all_zones)
 ]
 
-settings = {
-    'UDP_IP': env['UDP_IP'],
-    'UDP_PORT': env['UDP_PORT']
-}
-
-app = App(routes=routes, settings=settings)
+app = App(routes=routes)
 
 
 if __name__ == '__main__':
-    app.main()
+    app.serve('0.0.0.0', 5000, debug=True)
